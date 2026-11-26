@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Langit Nusantara: Ring Rush — Game Terbang 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #7ec8f7;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: absolute; inset: 0; pointer-events: none; color: #123;
+    text-shadow: 0 1px 2px rgba(255,255,255,.7); }
+  .panel { background: rgba(255,255,255,.82); border: 2px solid rgba(255,255,255,.9);
+    border-radius: 14px; box-shadow: 0 4px 16px rgba(20,60,120,.25); }
+  #hud-top { position: absolute; top: 12px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  #score-box { padding: 8px 16px; text-align: left; }
+  #score-box .label { font-size: 11px; letter-spacing: 2px; color: #557; font-weight: 700; }
+  #score { font-size: 34px; font-weight: 900; color: #d21f3c; line-height: 1; }
+  #combo { font-size: 14px; font-weight: 800; color: #e07b00; }
+  #timer-box { padding: 8px 18px; text-align: center; }
+  #timer { font-size: 30px; font-weight: 900; color: #123; }
+  #timer.low { color: #d21f3c; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  #rings-box { padding: 8px 16px; text-align: right; }
+  #rings-box .label { font-size: 11px; letter-spacing: 2px; color: #557; font-weight: 700; }
+  #rings { font-size: 26px; font-weight: 900; color: #0a6ebd; }
+  #lives { font-size: 22px; letter-spacing: 2px; color: #d21f3c; }
+
+  #hud-bottom { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 10px; }
+  .gauge { padding: 8px 14px; font-weight: 800; font-size: 15px; color: #123; }
+  .gauge small { display: block; font-size: 10px; letter-spacing: 2px; color: #557; }
+  #speed-val { color: #0a6ebd; } #alt-val { color: #0a7a3d; }
+
+  #toast { position: absolute; top: 22%; left: 50%; transform: translateX(-50%);
+    font-size: 44px; font-weight: 900; color: #ffb700; -webkit-text-stroke: 1.5px #7a4d00;
+    text-shadow: 0 3px 0 rgba(122,77,0,.35), 0 6px 18px rgba(0,0,0,.25);
+    opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  #warn { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+    padding: 8px 18px; font-weight: 800; font-size: 16px; color: #8a1c00;
+    background: rgba(255,236,200,.92); border: 2px solid #ffb700; border-radius: 999px;
+    display: none; }
+  #next-arrow { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    font-size: 30px; color: #ffb700; text-shadow: 0 2px 6px rgba(0,0,0,.4);
+    display: none; pointer-events: none; }
+  #help { position: absolute; right: 12px; bottom: 12px; padding: 8px 12px;
+    font-size: 12px; line-height: 1.5; color: #345; max-width: 250px; }
+
+  /* ---------- Overlay screens ---------- */
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: linear-gradient(180deg, rgba(126,200,247,.25), rgba(255,255,255,.45));
+    pointer-events: auto; z-index: 5; }
+  .screen.hidden { display: none; }
+  .card { background: rgba(255,255,255,.92); border-radius: 22px; padding: 30px 42px;
+    box-shadow: 0 12px 40px rgba(20,60,120,.35); max-width: 620px; border: 3px solid #fff; }
+  h1.title { font-size: 46px; font-weight: 900; color: #d21f3c; letter-spacing: 1px;
+    text-shadow: 0 2px 0 #fff, 0 4px 14px rgba(210,31,60,.3); }
+  h1.title .sky { color: #0a6ebd; display: block; font-size: 30px; letter-spacing: 6px; }
+  .tagline { margin: 8px 0 16px; font-size: 16px; color: #345; font-weight: 600; }
+  .controls { display: grid; grid-template-columns: auto auto; gap: 4px 16px;
+    text-align: left; font-size: 14px; color: #234; margin: 0 auto 18px; width: fit-content; }
+  .controls b { background: #eef4ff; border: 1px solid #bcd; border-radius: 6px;
+    padding: 1px 8px; font-family: inherit; }
+  .big-btn { pointer-events: auto; cursor: pointer; font-size: 20px; font-weight: 900;
+    color: #fff; background: linear-gradient(180deg, #ff5a3c, #d21f3c);
+    border: none; border-radius: 999px; padding: 14px 38px;
+    box-shadow: 0 6px 0 #8f1020, 0 10px 22px rgba(210,31,60,.4); }
+  .big-btn:hover { filter: brightness(1.08); }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8f1020; }
+  .rules { font-size: 13px; color: #456; margin-top: 14px; line-height: 1.6; }
+  .stars { font-size: 40px; letter-spacing: 6px; color: #ffb700;
+    text-shadow: 0 2px 0 #7a4d00; margin: 4px 0; }
+  .final-score { font-size: 52px; font-weight: 900; color: #d21f3c; line-height: 1; }
+  .stats { display: grid; grid-template-columns: auto auto; gap: 4px 22px;
+    font-size: 15px; color: #234; margin: 14px auto 18px; width: fit-content; text-align: left; }
+  .stats b { color: #0a6ebd; }
+  #mute-btn { position: absolute; top: 12px; right: 12px; z-index: 6; pointer-events: auto;
+    cursor: pointer; border: 2px solid #fff; background: rgba(255,255,255,.85);
+    border-radius: 999px; padding: 6px 12px; font-weight: 800; color: #123; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px;
+    transform: translate(-50%,-50%); pointer-events: none; opacity: .8; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff;
+    box-shadow: 0 0 4px rgba(0,0,0,.6); }
+  #crosshair::before { left: 12px; top: 0; width: 2px; height: 26px; }
+  #crosshair::after { left: 0; top: 12px; width: 26px; height: 2px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud">
+  <div id="hud-top">
+    <div id="score-box" class="panel">
+      <div class="label">SKOR</div>
+      <div id="score">0</div>
+      <div id="combo"></div>
+    </div>
+    <div id="timer-box" class="panel"><div id="timer">2:30</div></div>
+    <div id="rings-box" class="panel">
+      <div class="label">RING</div>
+      <div id="rings">0 / 12</div>
+      <div id="lives">♥♥♥</div>
+    </div>
+  </div>
+  <div id="hud-bottom">
+    <div class="gauge panel"><small>KECEPATAN</small><span id="speed-val">0</span> km/jam</div>
+    <div class="gauge panel"><small>KETINGGIAN</small><span id="alt-val">0</span> m</div>
+    <div class="gauge panel"><small>KOİN</small><span id="coins-val">0</span></div>
+  </div>
+  <div id="toast"></div>
+  <div id="warn"></div>
+  <div id="next-arrow">➤</div>
+  <div id="help" class="panel">↑↓ naik/turun &nbsp; ←→ belok<br>W/S gas &nbsp; Shift boost<br>P jeda &nbsp; R ulang &nbsp; M suara</div>
+  <div id="crosshair"></div>
+</div>
+<button id="mute-btn">🔊 Suara: ON</button>
+
+<div id="menu-screen" class="screen">
+  <div class="card">
+    <h1 class="title"><span class="sky">LANGIT NUSANTARA</span>RING RUSH ✈️</h1>
+    <p class="tagline">Terbang di langit siang yang cerah, lewati semua ring emas,
+      kumpulkan koin, dan hindari balon udara!</p>
+    <div class="controls">
+      <span><b>↑</b> <b>↓</b></span><span>naik / turun</span>
+      <span><b>←</b> <b>→</b></span><span>belok kiri / kanan</span>
+      <span><b>W</b> / <b>S</b></span><span>gas / rem</span>
+      <span><b>Shift</b></span><span>boost (cepat!)</span>
+      <span><b>P</b></span><span>jeda</span>
+      <span><b>R</b></span><span>ulang dari awal</span>
+    </div>
+    <button id="start-btn" class="big-btn">▶ TERBANG!</button>
+    <p class="rules">🎯 12 ring emas • tiap ring <b>100 poin × kombo</b> (beruntun s.d. ×5)<br>
+      🪙 Koin emas +25 • 🎈 Balon = −1 nyawa • ⛅ Awan badai bikin lambat<br>
+      ⏱️ 150 detik • 3 nyawa • Skor ≥1500 = ⭐⭐⭐ Pilot Hebat!</p>
+  </div>
+</div>
+
+<div id="over-screen" class="screen hidden">
+  <div class="card">
+    <h1 class="title" id="over-title">WAKTU HABIS!</h1>
+    <div class="stars" id="over-stars">⭐⭐⭐</div>
+    <div class="final-score" id="over-score">0</div>
+    <div class="stats">
+      <span>Ring dilewati</span><b id="over-rings">0 / 12</b>
+      <span>Koin terkumpul</span><b id="over-coins">0</b>
+      <span>Kombo terbaik</span><b id="over-combo">×1</b>
+      <span>Bonus waktu</span><b id="over-bonus">+0</b>
+      <span>Skor terbaik</span><b id="over-best">0</b>
+    </div>
+    <button id="again-btn" class="big-btn">↻ TERBANG LAGI</button>
+    <p class="rules">Tekan <b>R</b> atau <b>Enter</b> untuk main lagi.</p>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
